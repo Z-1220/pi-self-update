@@ -1,6 +1,6 @@
 {
   "name": "pi-self-update",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Let pi modify itself in-session: write files → validate → hot reload / cold restart → verify → explicit rollback. Tools: pi_self_status / pi_self_reload / pi_self_apply / pi_self_rollback / pi_self_restart.",
   "keywords": [
     "pi-package",
@@ -14,11 +14,11 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Z-1220/pi-self-update.git"
+    "url": "git+https://github.com/Origin1120/pi-self-update.git"
   },
-  "homepage": "https://github.com/Z-1220/pi-self-update#readme",
+  "homepage": "https://github.com/Origin1120/pi-self-update#readme",
   "bugs": {
-    "url": "https://github.com/Z-1220/pi-self-update/issues"
+    "url": "https://github.com/Origin1120/pi-self-update/issues"
   },
   "pi": {
     "extensions": [
