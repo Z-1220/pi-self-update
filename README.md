@@ -23,6 +23,23 @@ pi -e /absolute/path/to/pi-self-update
 卸载：`pi remove /absolute/path/to/pi-self-update`（git/npm 同理）。
 首次加载后**需要一次 `/reload` 或重启 pi** 才能让扩展生效——这是 pi 的固有约束：扩展代码只能由「启动 / 重载」进入运行时。
 
+## 作用域：全局 vs 项目（可自由切换）
+
+同一个包两种装法，互不干扰，只是 **settings 写在哪里**不同：
+
+| 作用域 | 命令 | 写入 | 生效范围 | 缓存目录 |
+|---|---|---|---|---|
+| **全局（默认）** | `pi install <src>` | `~/.pi/agent/settings.json` | 本机所有项目 | `~/.pi/agent/{npm,git}/…` |
+| **项目** | `pi install -l <src>` | `<项目>/.pi/settings.json` | 仅该项目（可随仓库共享，团队在项目受信任后自动安装） | `<项目>/.pi/{npm,git}/…` |
+
+切换：`pi remove <src>` 后换另一个作用域重装即可（两者不会互相覆盖）。
+
+注意：
+
+- **不要在两个作用域同时装同一个包** —— 同名命令会重复注册（第二个被加上 `:2` 后缀）、`pi-self-update` 的排队状态会分裂。
+- 项目作用域推荐用**相对路径**（如 `pi install -l ../pi-self-update`）——相对路径是相对**该 settings 文件**解析的，便于随仓库一起走。
+- 本扩展对两种作用域行为一致：代码自包含（脚本走包内 `bin/`，路径由 `import.meta.url` 解析），运行时状态统一放 `~/.pi/agent/state/pi-self-update/`（机器级，不随项目走）。
+
 ## 工具
 
 | 工具 | 作用 |
