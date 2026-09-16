@@ -1,0 +1,28 @@
+{
+  "name": "pi-self-update",
+  "version": "0.1.0",
+  "description": "让 pi 在自己的会话里改自己：写文件 → 校验 → 热重载/冷重启 → 核对 → 回滚。Tools: pi_self_status / pi_self_reload / pi_self_apply / pi_self_rollback / pi_self_restart.",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "self-update",
+    "hot-reload",
+    "restart"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "pi": {
+    "extensions": [
+      "./extensions"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "files": [
+    "extensions",
+    "bin",
+    "README.md"
+  ]
+}
