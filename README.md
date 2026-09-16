@@ -1,97 +1,203 @@
+<div align="center">
+
 # pi-self-update
 
-让 pi 在**自己的会话里**改自己的配置与扩展，并自动生效 —— 写文件 → 校验 → 热重载 / 冷重启 → 核对 → （必要时）回滚。
+**Let pi modify itself — live, inside its own session.**
 
-不是产品功能，是给「用 pi 开发 pi」的人用的系统级工具。
+Write files → validate → hot reload / cold restart → verify → rollback.
 
-## 安装
+[![Version](https://img.shields.io/github/v/tag/Z-1220/pi-self-update?label=version&sort=semver)](https://github.com/Z-1220/pi-self-update/tags)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![pi package](https://img.shields.io/badge/pi-package-blueviolet)](https://pi.dev/packages)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#requirements)
+[![README: 中文](https://img.shields.io/badge/README-中文-red)](README.zh-CN.md)
+
+</div>
+
+---
+
+## Why
+
+A coding agent that can author its own extensions, prompts, skills, settings — or patch its own dependencies — still has to **get that code into its own runtime**. Out of the box that means: finish the edit, quit, start again, find out it was broken.
+
+`pi-self-update` closes the loop from inside the session:
+
+| Without | With |
+|---|---|
+| write file → quit pi → restart → hope | `pi_self_apply` → validated → reloaded → `✅ 自更新已生效` |
+| a broken extension → dead session | validated **in a subprocess first**; nothing half-broken is left on disk |
+| restart lands in a *new* window, session lost | restart re-uses the **same terminal and session** — no new window |
+| "did my change actually load?" | `pi_self_status` compares the running instance's stamp against the file on disk |
+
+## Features
+
+- **5 tools** — `pi_self_status`, `pi_self_reload`, `pi_self_apply`, `pi_self_rollback`, `pi_self_restart`
+- **2 commands** — `/pi-reload-runtime`, `/pi-restart`
+- **Subprocess validation** — real `jiti` import plus a stub run of the extension factory; catches syntax errors, unresolvable imports and top-level crashes *before* they can touch your session
+- **Write allow-list** — `~/.pi/agent/**` and the current project only; pi's install directory is refused (upgrades would overwrite it)
+- **Journaled updates** — every apply is recorded, so "is the running instance the code on disk?" always has an answer
+- **Idle-window aware reload** — reloads are queued, retried with backoff (20/40/60/90 s) and dispatched the moment the session is actually idle
+- **Restarts that survive a stuck shutdown** — `--force-after 90` force-completes a restart if the graceful exit never lands
+- **Native Windows terminal takeover** — the resume command is *typed into the original console* (`WriteConsoleInput`, ConPTY / Windows Terminal included): same tab, same session, no extra window
+- **Cross-platform** — the tools work on Linux/macOS too; the terminal-injection path is Windows-specific and falls back to spawning with inherited stdio elsewhere
+
+## Install
 
 ```bash
-# 本地目录（开发中常用）
+# from git (pinned ref recommended)
+pi install git:github.com/Z-1220/pi-self-update@v0.1.1
+
+# project scope: written to <project>/.pi/settings.json (shareable with your team)
+pi install -l git:github.com/Z-1220/pi-self-update@v0.1.1
+
+# try it for one run only
+pi -e git:github.com/Z-1220/pi-self-update@v0.1.1
+
+# from a local checkout (no copy — the checkout *is* the running copy)
 pi install /absolute/path/to/pi-self-update
-
-# git（发布的仓库）
-pi install git:github.com/<user>/pi-self-update@v0.1.0
-
-# npm
-pi install npm:pi-self-update
-
-# 只在本轮试用，不写 settings
-pi -e /absolute/path/to/pi-self-update
 ```
 
-卸载：`pi remove /absolute/path/to/pi-self-update`（git/npm 同理）。
-首次加载后**需要一次 `/reload` 或重启 pi** 才能让扩展生效——这是 pi 的固有约束：扩展代码只能由「启动 / 重载」进入运行时。
+After the first load, run **`/reload` once** (or restart pi): extension code can only enter the runtime at startup or reload.
 
-## 作用域：全局 vs 项目（可自由切换）
+<details>
+<summary><b>Global vs project scope</b></summary>
 
-同一个包两种装法，互不干扰，只是 **settings 写在哪里**不同：
-
-| 作用域 | 命令 | 写入 | 生效范围 | 缓存目录 |
-|---|---|---|---|---|
-| **全局（默认）** | `pi install <src>` | `~/.pi/agent/settings.json` | 本机所有项目 | `~/.pi/agent/{npm,git}/…` |
-| **项目** | `pi install -l <src>` | `<项目>/.pi/settings.json` | 仅该项目（可随仓库共享，团队在项目受信任后自动安装） | `<项目>/.pi/{npm,git}/…` |
-
-切换：`pi remove <src>` 后换另一个作用域重装即可（两者不会互相覆盖）。
-
-注意：
-
-- **不要在两个作用域同时装同一个包** —— 同名命令会重复注册（第二个被加上 `:2` 后缀）、`pi-self-update` 的排队状态会分裂。
-- 项目作用域推荐用**相对路径**（如 `pi install -l ../pi-self-update`）——相对路径是相对**该 settings 文件**解析的，便于随仓库一起走。
-- 本扩展对两种作用域行为一致：代码自包含（脚本走包内 `bin/`，路径由 `import.meta.url` 解析），运行时状态统一放 `~/.pi/agent/state/pi-self-update/`（机器级，不随项目走）。
-
-## 工具
-
-| 工具 | 作用 |
-|---|---|
-| `pi_self_status` | 核对：内存戳 vs 磁盘哈希、journal、已注册工具、会话/模型信息 |
-| `pi_self_reload` | 热重载（扩展/技能/提示词/主题/AGENTS.md/settings/keybindings） |
-| `pi_self_apply` | 写文件 + 白名单校验 + 子进程静态校验 + 排队重载（失败自动还原） |
-| `pi_self_rollback` | **显式**回滚上一次 `pi_self_apply`（不会自动执行） |
-| `pi_self_restart` | 冷重启：同一终端接管、会话续上、不新开窗口 |
-
-## 三层能力（实测结论）
-
-| 层 | 覆盖 | 触发 | 注意 |
+| Scope | Command | Written to | Applies to |
 |---|---|---|---|
-| **L0 即时** | 运行中 `registerTool()`、`models.json` | 无需操作 | — |
-| **L1 热重载** | 扩展 / 技能 / 提示词 / 主题 / AGENTS.md / settings / keybindings | 会话**空闲**时手敲 `/reload`；或 `pi_self_apply` 排队后自动等空闲窗口 | 交互模式的 reload 有 `isStreaming`/`isCompacting` 守卫，会**静默拒绝**（只弹 TUI 警告，扩展侧无回调）→ 活跃对话中可能需要等一会儿；排队**不会**擅自回滚 |
-| **L2 冷重启** | pi 自身升级、`node_modules` 补丁、`trust.json`、进程环境变量 | `pi_self_restart` | 原终端接管（fd0 继承注入）、不新开窗口、会话自动续上、`--force-after 90` 防卡死 |
+| Global (default) | `pi install <src>` | `~/.pi/agent/settings.json` | every project on this machine |
+| Project | `pi install -l <src>` | `<project>/.pi/settings.json` | that project only (auto-installed for teammates once the project is trusted) |
 
-关键实现点（踩过的坑，都写在代码注释里）：
+Switch scopes with `pi remove <src>` + install again. Do **not** install the same package in both scopes — commands would be registered twice (the duplicate gets a `:2` suffix) and pending-reload state would split. Relative paths in a project settings file resolve against that file, which makes `pi install -l ../pi-self-update` a nice way to vendor it.
 
-- **Windows 上 `detached:false` 的子进程会随父进程被杀**（libuv 的 Job Object），而 `detached:true` 会被换成 `CREATE_NEW_CONSOLE` 多开一个窗口（`windowsHide` 挡不住）→ 用 `cmd /c start /b` 才能"活下来且不新开窗口"。
-- 冷重启的"原终端接管"靠**把 resume 命令注入原控制台输入缓冲区**（`WriteConsoleInput`），由停在那儿的 shell 自己执行；句柄来自 pi 进程 stdin 的**继承**（跨控制台可写），失败时按 shell pid `AttachConsole` 兜底，再失败降级新窗口。
-- 判断"更新是否落地"要用 **journal**（而不是"本扩展文件哈希变没变"——改动可能落在别的扩展文件上，实测踩过）。
-- `pi-coninject.ps1` 必须存为 **UTF-8 with BOM**（PowerShell 5.1 无 BOM 会按 ANSI 解码，中文注释字节串进 Add-C# 源码会让编译失败）。
+</details>
 
-## 安全边界
+## Quick start
 
-1. 写白名单：只允许 `~/.pi/agent/**` 与当前项目目录；显式拒绝 pi 安装目录。
-2. 写前备份、写后子进程校验（jiti 真 import + stub 试跑），校验不过立刻还原、磁盘不留半成品。
-3. 回滚是**显式**操作；自动回滚已取消（它会在 reload 还没轮到落地时先把新文件删掉）。
-4. 冷重启期间不要敲键盘 —— 注入是"打字"进控制台，会与按键冲突。
+A real acceptance run — a new extension file (`probe.ts`, exposing one tool) applied from inside the session:
 
-## 运行时状态与日志
+```text
+> pi_self_apply(files=[{path: "~/.pi/agent/extensions/probe.ts", content: …}],
+                expected_tools=["probe_tool"], note="add probe tool")
 
-```
-~/.pi/agent/state/pi-self-update/journal.json      待处理的 reload 记录（核对/回滚依据）
-~/.pi/agent/state/pi-self-update/pi-self-update.log 埋点：queue/dispatch/command/verify
-~/.pi/agent/state/pi-self-update/pi-relaunch.log    重启链路日志
-```
+✅ 已写入并校验通过 1 个文件
+校验结果：导入通过；stub 试跑通过（registrations: registerTool）
 
-## 目录结构
+> pi_self_status()
 
-```
-extensions/pi-self-update.ts   扩展本体（工具 + 命令：/pi-reload-runtime、/pi-restart）
-bin/pi-check.mjs               静态校验器（jiti 真 import + stub 试跑）
-bin/pi-relaunch.mjs            旁观重启器（等 pid 退出 → 注入 resume 命令）
-bin/pi-coninject.ps1           原控制台注入器（Windows，UTF-8 with BOM）
+内存戳 stamp ：a52323c52b5ef37b（pid 14632 于 2026-09-15T19:00:38.004Z 加载）
+磁盘哈希     ：a52323c52b5ef37b
+生效判定     ：✅ 当前实例就是磁盘上的最新代码
+已注册工具   ：16 个
 ```
 
-## 验收方式（可复现）
+```
+~/.pi/agent/state/pi-self-update/pi-self-update.log
+[19:00:20.864Z] queue: add probe tool
+[19:00:38.004Z] module loaded pid=14632 stamp=a52323c52b5ef37b
+[19:00:38.072Z] session_start reason=reload journal=reload
+[19:00:38.073Z] verify: landed=true missing=[] attempts=0 isIdle=true
+[19:00:38.142Z] command: ctx.reload() 已返回
+```
 
-1. `pi_self_status` → 内存戳 == 磁盘哈希；
-2. `pi_self_apply` 改一个小文件（例如新建一个只注册一个工具的探针扩展，`expected_tools` 指定它）；
-3. 会话空闲时（手敲 `/reload`，或等 `agent_settled`/退避重试抓住窗口）→ transcript 出现 `✅ 自更新已生效`，探针工具可调用；
-4. `pi_relaunch.log` 里应出现 `source=inherited`（继承句柄路径）与 `重启完成`。
+> `19:00:20` queue → `19:00:38` applied: the reload waited for an idle window (see below), then verified itself and cleared the journal.
+
+## How it works
+
+### Three layers
+
+| Layer | Covers | Trigger |
+|---|---|---|
+| **L0 — instant** | `pi.registerTool()` called at runtime, `models.json` | nothing to do |
+| **L1 — hot reload** | extensions, skills, prompt templates, themes, `AGENTS.md`, `settings.json`, keybindings | `/reload` while idle, or a queued `pi_self_apply` |
+| **L2 — cold restart** | pi's own version, `node_modules` patches, `trust.json`, process environment | `pi_self_restart` |
+
+### Why a reload can be "queued but not applied"
+
+pi's interactive reload goes through `handleReloadCommand()`, which **refuses silently** while the session is streaming:
+
+```js
+if (this.session.isStreaming)  { showWarning("Wait for the current response to finish before reloading."); return; }
+if (this.session.isCompacting) { showWarning("Wait for compaction to finish before reloading.");     return; }
+```
+
+Extensions get no callback, no error — a refused reload looks exactly like a successful one from the outside. So this package:
+
+1. writes a **journal** entry for every apply (`~/.pi/agent/state/pi-self-update/journal.json`),
+2. keeps trying: `agent_settled` (fires late, once the session is truly idle), an opportunistic dispatch on `input`/`turn_start` when `ctx.isIdle()`, and a backoff chain (20/40/60/90 s),
+3. decides "did it land?" by comparing **its own load time** with the journal timestamp — not by "did some file change", which is wrong when the edit lands in a *different* extension file,
+4. **never rolls back on its own**. An earlier version did, and it deleted the not-yet-loaded file before the reload got its turn. Rollback is explicit: `pi_self_rollback`.
+
+### The restart path (Windows)
+
+Getting the *same terminal* back is the hard part:
+
+| Approach | Result |
+|---|---|
+| `spawn(detached: false)` | killed together with pi (libuv puts it in a job object) |
+| `spawn(detached: true)` | survives, but libuv turns it into `CREATE_NEW_CONSOLE` — a second window appears (`windowsHide` does not stop it) |
+| **`cmd /d /c start /b "…" node pi-relaunch.mjs`** | survives *and* no new console — the one combination that works |
+
+The relauncher then waits for pi's pid to disappear and **types the resume command into the original console input buffer** (`WriteConsoleInput`, via `bin/pi-coninject.ps1`). The handle is inherited from pi's stdin (fd0) — a console handle stays writable across consoles — so the shell sitting at the prompt executes `pi --session <id>` itself. The new pi is a child of the *original* shell: same window, same tab, session continues.
+
+Fallbacks: attach to the shell's console by pid → new window (`--mode window`) → manual command in the log.
+`--force-after 90` force-ends pi if a requested graceful shutdown never lands.
+
+> POSIX note: `--mode tty` spawns with inherited stdio and is best-effort — the terminal still belongs to the original shell, so input is shared. The reliable paths there are `/reload` and restarting manually.
+
+### State & logs
+
+```
+~/.pi/agent/state/pi-self-update/journal.json        pending reload record (verify / rollback source)
+~/.pi/agent/state/pi-self-update/pi-self-update.log  trace: queue / dispatch / command / verify
+~/.pi/agent/state/pi-self-update/pi-relaunch.log     restart chain
+```
+
+## Safety
+
+1. **Allow-list**: writes are restricted to `~/.pi/agent/**` and the current project directory; pi's install directory is refused outright.
+2. **Backup → validate → restore**: every write is backed up, then validated in a **child process**; a failed validation restores the backup and leaves nothing behind.
+3. **Explicit rollback**: `pi_self_rollback` restores the last `pi_self_apply`. Nothing rolls back behind your back.
+4. **Don't type during a restart**: takeover works by typing into the console — your keystrokes would collide with it.
+
+## Requirements
+
+- pi with extension support (developed and verified against `@earendil-works/pi-coding-agent` 0.85.x)
+- Node.js 20+
+- Windows for the terminal-injection restart path; elsewhere the tools work and restarts fall back to spawn / new window
+- Windows PowerShell 5.1+ for `bin/pi-coninject.ps1` (keep the file UTF-8 **with BOM** — PowerShell 5.1 decodes ANSI otherwise and the embedded C# fails to compile)
+
+## Troubleshooting
+
+| Symptom | What to do |
+|---|---|
+| `pi_self_apply` says "已排队" but nothing changes | The session was streaming. Wait for an idle moment, or type `/reload`. Check `pi-self-update.log` — `dispatch` without `module loaded` means the guard refused. |
+| Reload worked but the tools are unchanged | Compare stamps with `pi_self_status`. If the stamp is stale, the running instance never reloaded — restart with `pi_self_restart`. |
+| Restart did not come back | The resume command is written to `pi-relaunch.log`. Run it manually; then please open an issue with the log. |
+| Terminal left in a weird state after a forced restart | The returning pi resets the terminal on startup; if it never started, `stty sane && reset` (POSIX) or just open a new tab. |
+
+## Layout
+
+```
+extensions/pi-self-update.ts   tools + commands
+bin/pi-check.mjs               static validator (jiti import + stub run)
+bin/pi-relaunch.mjs            spectator relauncher (survives exit, injects resume)
+bin/pi-coninject.ps1           console injector (Windows, UTF-8 with BOM)
+```
+
+## Development
+
+```bash
+git clone https://github.com/Z-1220/pi-self-update
+pi install ./pi-self-update          # local path: your checkout is the running copy
+# edit → pi_self_apply / pi_self_restart (or /reload) → pi_self_status
+```
+
+Validate without touching a live session:
+
+```bash
+node bin/pi-check.mjs --pi-pkg <path-to-pi-coding-agent> extensions/pi-self-update.ts
+```
+
+## License
+
+[MIT](LICENSE) © 2026 Z-1220

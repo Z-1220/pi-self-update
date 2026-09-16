@@ -1,16 +1,25 @@
 {
   "name": "pi-self-update",
-  "version": "0.1.0",
-  "description": "让 pi 在自己的会话里改自己：写文件 → 校验 → 热重载/冷重启 → 核对 → 回滚。Tools: pi_self_status / pi_self_reload / pi_self_apply / pi_self_rollback / pi_self_restart.",
+  "version": "0.1.1",
+  "description": "Let pi modify itself in-session: write files → validate → hot reload / cold restart → verify → explicit rollback. Tools: pi_self_status / pi_self_reload / pi_self_apply / pi_self_rollback / pi_self_restart.",
   "keywords": [
     "pi-package",
     "pi",
     "self-update",
     "hot-reload",
-    "restart"
+    "restart",
+    "agent-tooling"
   ],
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Z-1220/pi-self-update.git"
+  },
+  "homepage": "https://github.com/Z-1220/pi-self-update#readme",
+  "bugs": {
+    "url": "https://github.com/Z-1220/pi-self-update/issues"
+  },
   "pi": {
     "extensions": [
       "./extensions"
@@ -23,6 +32,8 @@
   "files": [
     "extensions",
     "bin",
-    "README.md"
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
   ]
 }
