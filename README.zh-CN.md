@@ -6,7 +6,7 @@
 
 写文件 → 校验 → 热重载 / 冷重启 → 核对 → （必要时）回滚。
 
-[![Version](https://img.shields.io/github/v/tag/Origin1120/pi-self-update?label=version&sort=semver)](https://github.com/Origin1120/pi-self-update/tags)
+[![Version](https://img.shields.io/github/v/tag/Zefyr1120/pi-self-update?label=version&sort=semver)](https://github.com/Zefyr1120/pi-self-update/tags)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![pi package](https://img.shields.io/badge/pi-package-blueviolet)](https://pi.dev/packages)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#环境要求)
@@ -45,13 +45,13 @@
 
 ```bash
 # git（推荐钉住 tag）
-pi install git:github.com/Origin1120/pi-self-update@v0.1.2
+pi install git:github.com/Zefyr1120/pi-self-update@v0.1.3
 
 # 项目级：写进 <项目>/.pi/settings.json（可随仓库共享给团队）
-pi install -l git:github.com/Origin1120/pi-self-update@v0.1.2
+pi install -l git:github.com/Zefyr1120/pi-self-update@v0.1.3
 
 # 只在本轮试用
-pi -e git:github.com/Origin1120/pi-self-update@v0.1.2
+pi -e git:github.com/Zefyr1120/pi-self-update@v0.1.3
 
 # 本地检出（不复制 —— 检出目录就是运行副本）
 pi install /absolute/path/to/pi-self-update
@@ -187,7 +187,7 @@ bin/pi-coninject.ps1           控制台注入器（Windows，UTF-8 with BOM）
 ## 开发
 
 ```bash
-git clone https://github.com/Origin1120/pi-self-update
+git clone https://github.com/Zefyr1120/pi-self-update
 pi install ./pi-self-update          # local path：检出目录就是运行副本
 # 改文件 → pi_self_apply / pi_self_restart（或 /reload）→ pi_self_status
 ```
@@ -200,4 +200,4 @@ node bin/pi-check.mjs --pi-pkg <path-to-pi-coding-agent> extensions/pi-self-upda
 
 ## 许可
 
-[MIT](LICENSE) © 2026 Origin1120
+[MIT](LICENSE) © 2026 Zefyr1120

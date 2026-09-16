@@ -6,7 +6,7 @@
 
 Write files → validate → hot reload / cold restart → verify → rollback.
 
-[![Version](https://img.shields.io/github/v/tag/Origin1120/pi-self-update?label=version&sort=semver)](https://github.com/Origin1120/pi-self-update/tags)
+[![Version](https://img.shields.io/github/v/tag/Zefyr1120/pi-self-update?label=version&sort=semver)](https://github.com/Zefyr1120/pi-self-update/tags)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![pi package](https://img.shields.io/badge/pi-package-blueviolet)](https://pi.dev/packages)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#requirements)
@@ -45,13 +45,13 @@ A coding agent that can author its own extensions, prompts, skills, settings —
 
 ```bash
 # from git (pinned ref recommended)
-pi install git:github.com/Origin1120/pi-self-update@v0.1.2
+pi install git:github.com/Zefyr1120/pi-self-update@v0.1.3
 
 # project scope: written to <project>/.pi/settings.json (shareable with your team)
-pi install -l git:github.com/Origin1120/pi-self-update@v0.1.2
+pi install -l git:github.com/Zefyr1120/pi-self-update@v0.1.3
 
 # try it for one run only
-pi -e git:github.com/Origin1120/pi-self-update@v0.1.2
+pi -e git:github.com/Zefyr1120/pi-self-update@v0.1.3
 
 # from a local checkout (no copy — the checkout *is* the running copy)
 pi install /absolute/path/to/pi-self-update
@@ -187,7 +187,7 @@ bin/pi-coninject.ps1           console injector (Windows, UTF-8 with BOM)
 ## Development
 
 ```bash
-git clone https://github.com/Origin1120/pi-self-update
+git clone https://github.com/Zefyr1120/pi-self-update
 pi install ./pi-self-update          # local path: your checkout is the running copy
 # edit → pi_self_apply / pi_self_restart (or /reload) → pi_self_status
 ```
@@ -200,4 +200,4 @@ node bin/pi-check.mjs --pi-pkg <path-to-pi-coding-agent> extensions/pi-self-upda
 
 ## License
 
-[MIT](LICENSE) © 2026 Origin1120
+[MIT](LICENSE) © 2026 Zefyr1120
